@@ -31,11 +31,11 @@ The recommended way of running is to pull the image from [Docker Hub](https://hu
 By default, the easiest way to get running is:
 
 ```bash
-docker run -p 8787:8787 -v config_dir:/app/config m0ngr31/ccEPG
+docker run -p 8787:8787 -v config_dir:/app/config m0ngr31/ccepg
 ```
 
 If you run into permissions issues:
 
 ```bash
-docker run -p 8787:8787 -v config_dir:/app/config -e PUID=$(id -u $USER) -e PGID=$(id -g $USER) m0ngr31/ccEPG
+docker run -p 8787:8787 -v config_dir:/app/config -e PUID=$(id -u $USER) -e PGID=$(id -g $USER) m0ngr31/ccepg
 ```
