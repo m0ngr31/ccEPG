@@ -1,6 +1,6 @@
 {
   "name": "cc-epg",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "scripts": {
     "start": "ts-node index.tsx",
