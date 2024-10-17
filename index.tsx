@@ -59,10 +59,10 @@ app.get('/', async c => {
   const allChannels = await db.channels.find<IChannel>({});
 
   const peacock = await db.misc.findOne<IMisc>({key: 'peacock'});
-  const peacockChannels = allChannels.filter(c => c.from === 'peacock');
+  const peacockChannels = allChannels.filter(c => c.from.toLowerCase() === 'peacock');
 
   const abc = await db.misc.findOne<IMisc>({key: 'abc'});
-  const abcChannels = allChannels.filter(c => c.from === 'abc');
+  const abcChannels = allChannels.filter(c => c.from.toLowerCase() === 'abc');
 
   return c.html(
     html`<!DOCTYPE html>${(
@@ -127,7 +127,8 @@ app.put('/provider/toggle/:provider', async c => {
 
   await miscDbHandler.setCanUseNetwork(provider.toLowerCase(), enabled);
 
-  const providerChannels = await db.channels.find<IChannel>({from: provider.toLowerCase()});
+  const regex = new RegExp(provider, 'i');
+  const providerChannels = await db.channels.find<IChannel>({from: {$regex: regex}});
 
   return c.html(
     <>

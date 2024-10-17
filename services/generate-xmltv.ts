@@ -32,7 +32,7 @@ export const generateXml = async (): Promise<xml> => {
   const channels = await db.channels.find<IChannel>({}).sort({number: 1});
 
   for (const channel of channels) {
-    const channelMiscDb = await db.misc.findOne<IMisc>({key: channel.from});
+    const channelMiscDb = await db.misc.findOne<IMisc>({key: channel.from.toLowerCase()});
 
     if (!channel.enabled || !channelMiscDb || !channelMiscDb.value) {
       continue;
@@ -72,9 +72,7 @@ export const generateXml = async (): Promise<xml> => {
     });
   }
 
-  const scheduledEntries = await db.entries
-    .find<IEntry>({channel: {$exists: true}})
-    .sort({start: 1});
+  const scheduledEntries = await db.entries.find<IEntry>({channel: {$exists: true}}).sort({start: 1});
 
   for (const entry of scheduledEntries) {
     const entryName = entry.name;
