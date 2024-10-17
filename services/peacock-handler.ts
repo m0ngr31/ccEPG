@@ -7,16 +7,16 @@ import {db} from './database';
 import {miscDbHandler} from './misc-db';
 
 interface IPeacockChannel {
-id: string;
-    gracenoteId: string;
-    scheduleItems: IPeacockEvent[];
-    serviceKey: string;
-    logo: {
-      Default: string;
-    };
-    name: string;
-    type: string;
-    epgNumber: number;
+  id: string;
+  gracenoteId: string;
+  scheduleItems: IPeacockEvent[];
+  serviceKey: string;
+  logo: {
+    Default: string;
+  };
+  name: string;
+  type: string;
+  epgNumber: number;
 }
 
 interface IPeacockRes {
@@ -48,30 +48,37 @@ const parseChannels = async (channels: IPeacockChannel[]): Promise<void> => {
   for (const channel of channels) {
     const channelExists = await db.channels.findOne<IChannel>({id: channel.id});
 
+    const channelData: Partial<IChannel> = {
+      epgNumber: channel.epgNumber,
+      from: 'Peacock',
+      gracenoteId: channel.gracenoteId,
+      id: channel.id,
+      image: channel.logo.Default.replace('{width}', '360').replace('{height}', '270'),
+      name: channel.name,
+      type: channel.type.indexOf('linear') > -1 ? 'linear' : 'vod',
+      url: `https://www.peacocktv.com/watch/playback/live/${channel.serviceKey}`,
+    };
+
     if (!channelExists) {
       console.log('Adding channel: ', channel.name);
 
       const numChannels = await db.channels.count({});
 
-      if (channel.gracenoteId) {
-        console.log('eyy lmao', channel.name, channel.gracenoteId);
-      }
-
       await db.channels.insert<IChannel>({
+        ...channelData,
         enabled: true,
-        epgNumber: channel.epgNumber,
-        from: 'Peacock',
-        gracenoteId: channel.gracenoteId,
-        id: channel.id,
-        image: channel.logo.Default.replace('{width}', '360').replace('{height}', '270'),
-        name: channel.name,
         number: numChannels + 1,
-        type: channel.type.indexOf('linear') > -1 ? 'linear' : 'vod',
-        url: `https://www.peacocktv.com/watch/playback/live/${channel.id}`,
-      });
+      } as IChannel);
+    } else {
+      await db.channels.update<IChannel>(
+        {id: channel.id},
+        {
+          $set: channelData,
+        },
+      );
     }
   }
-}
+};
 
 const parseAirings = async (events: IPeacockAirings): Promise<void> => {
   const now = moment();

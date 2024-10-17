@@ -20,7 +20,7 @@ export const generateM3u = async (): Promise<string> => {
       channel.gracenoteId ? `tvc-guide-stationid="${channel.gracenoteId}"` : ''
     } tvg-id="${channel.number}.ccEPG" channel-number="${channel.number}" tvg-chno="${channel.number}" tvg-name="${
       channel.name
-    }" group-title="ccEPG", ccEPG ${channel.number}`;
+    }" group-title="ccEPG", ${channel.name}`;
     m3uFile = `${m3uFile}\n${prefix}/stream?url=${channel.url}\n`;
   }
 
