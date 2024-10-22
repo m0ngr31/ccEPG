@@ -38,18 +38,18 @@ interface IABCEvent {
   tmsid: string;
   title: string;
   description: string;
+  longdescription: string;
   images: IABCImage[];
   genre: string;
-  showTitle? : string;
+  showTitle?: string;
   season: number;
   episode: number;
 }
 
-type IABCEventFull = IABCEventMin & IABCEvent;
-
-interface IABCAirings {
-  [key: string]: IABCEventFull;
-}
+type IABCEventFull = IABCEventMin &
+  IABCEvent & {
+    channelId: string;
+  };
 
 interface IABCGeo {
   device: string;
@@ -80,9 +80,7 @@ const parseChannels = async (channels: IABCChannel[]): Promise<void> => {
 
       const numChannels = await db.channels.count({});
 
-      const image = channel.images
-        ?.sort((a, b) => b.width - a.width)
-        .find(img => img.format === 'png');
+      const image = channel.images?.sort((a, b) => b.width - a.width).find(img => img.format === 'png');
 
       await db.channels.insert<IChannel>({
         enabled: true,
@@ -97,13 +95,11 @@ const parseChannels = async (channels: IABCChannel[]): Promise<void> => {
   }
 };
 
-const parseAirings = async (events: IABCAirings): Promise<void> => {
+const parseAirings = async (events: IABCEventFull[]): Promise<void> => {
   const now = moment();
   const endSchedule = moment().add(2, 'days').endOf('day');
 
-  for (const channelId in events) {
-    const event = events[channelId];
-
+  for (const event of events) {
     if (!event || !event.tmsid) {
       return;
     }
@@ -112,23 +108,21 @@ const parseAirings = async (events: IABCAirings): Promise<void> => {
 
     if (!entryExists) {
       const start = moment(event.displayAirtime);
-      const end = moment(start).add(event.displayAirtime, 'milliseconds');
+      const end = moment(start).add(event.duration, 'milliseconds');
 
       if (end.isBefore(now) || start.isAfter(endSchedule)) {
         continue;
       }
 
       const eventName = (event.title || event.showTitle).trim();
-      const image = event.images
-        ?.sort((a, b) => b.width - a.width)
-        .find(img => img.format === 'png');
+      const image = event.images?.sort((a, b) => b.width - a.width).find(img => img.format === 'png');
 
       console.log('Adding event: ', eventName);
 
       await db.entries.insert<IEntry>({
         categories: ['ABC'],
-        channelId,
-        descripion: event.description,
+        channelId: event.channelId,
+        descripion: event.longdescription ?? event.description,
         duration: end.diff(start, 'seconds'),
         end: end.valueOf(),
         id: `${event.tmsid}-${event.displayAirtime}`,
@@ -165,23 +159,24 @@ class ABCHandler {
 
     console.log('Looking for ABC events...');
 
-    const entries: IABCAirings = {};
+    const entries: IABCEventFull[] = [];
 
     try {
       const data = await this.getChannels();
 
       for (const category of data.categories) {
         for (const channel of category.channels) {
-          for (const event of channel.airings) {
+          for (const event of channel.airings || []) {
             const fullEntry = data.programs.find(p => p.tmsid === event.tmsid);
 
             if (fullEntry) {
               const fullEvent: IABCEventFull = {
                 ...event,
                 ...fullEntry,
+                channelId: channel.id,
               };
 
-              entries[channel.id] = fullEvent;
+              entries.push(fullEvent);
             }
           }
         }
@@ -211,7 +206,7 @@ class ABCHandler {
         '?brand=001',
         '&device=001',
         '&authlevel=0',
-        '&layout=3897245',
+        '&layout=2844740',
         '&starttime=',
         now.format('YYYYMMDD-HHMM'),
         '&endtime=',
@@ -233,7 +228,9 @@ class ABCHandler {
 
       for (const category of data.categories) {
         for (const channel of category.channels) {
-          channels.push(channel);
+          if (channel.airings && channel.airings.length > 0) {
+            channels.push(channel);
+          }
         }
       }
 
@@ -248,7 +245,13 @@ class ABCHandler {
 
   private getGeoData = async (): Promise<void> => {
     try {
-      const url = ['https://', 'prod.gatekeeper.us-abc.symphony.edgedatg.go.com', '/vp2/ws/utils', '/2021/geo/video/geolocation', '/001/001/gt/-1.jsonp'].join('');
+      const url = [
+        'https://',
+        'prod.gatekeeper.us-abc.symphony.edgedatg.go.com',
+        '/vp2/ws/utils',
+        '/2021/geo/video/geolocation',
+        '/001/001/gt/-1.jsonp',
+      ].join('');
 
       const {data} = await axios.get<IABCGeo>(url, {
         headers: {

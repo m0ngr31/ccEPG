@@ -23,6 +23,7 @@ export const Provider: FC<IProviderProps> = ({name, channels, enabled}) => {
                 type="checkbox"
                 role="switch"
                 checked={enabled ? true : false}
+                data-enabled={enabled ? 'true' : 'false'}
               />
               Enabled
             </label>
@@ -46,6 +47,7 @@ export const Provider: FC<IProviderProps> = ({name, channels, enabled}) => {
                       hx-swap="outerHTML"
                       type="checkbox"
                       checked={c.enabled}
+                      data-enabled={c.enabled ? 'true' : 'false'}
                       hx-put={`/channel/toggle/${c.id}`}
                       hx-trigger="change"
                       name="channel-enabled"

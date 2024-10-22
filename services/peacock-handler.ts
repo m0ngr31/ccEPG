@@ -25,6 +25,7 @@ interface IPeacockRes {
 
 interface IPeacockEvent {
   id: string;
+  channelId: string;
   startTimeUTC: number;
   durationSeconds: number;
   airingType: string;
@@ -38,10 +39,6 @@ interface IPeacockEvent {
       '16-9': string;
     };
   };
-}
-
-interface IPeacockAirings {
-  [key: string]: IPeacockEvent;
 }
 
 const parseChannels = async (channels: IPeacockChannel[]): Promise<void> => {
@@ -80,13 +77,11 @@ const parseChannels = async (channels: IPeacockChannel[]): Promise<void> => {
   }
 };
 
-const parseAirings = async (events: IPeacockAirings): Promise<void> => {
+const parseAirings = async (events: IPeacockEvent[]): Promise<void> => {
   const now = moment();
   const endSchedule = moment().add(2, 'days').endOf('day');
 
-  for (const channelId in events) {
-    const event = events[channelId];
-
+  for (const event of events) {
     if (!event || !event.id) {
       return;
     }
@@ -105,7 +100,7 @@ const parseAirings = async (events: IPeacockAirings): Promise<void> => {
 
       await db.entries.insert<IEntry>({
         categories: ['Peacock'],
-        channelId,
+        channelId: event.channelId,
         descripion: event.data.description,
         duration: end.diff(start, 'seconds'),
         end: end.valueOf(),
@@ -142,14 +137,17 @@ class PeacockHandler {
 
     console.log('Looking for Peacock events...');
 
-    const entries: IPeacockAirings = {};
+    const entries: IPeacockEvent[] = [];
 
     try {
-      const data = await this.getChannels(1000);
+      const data = await this.getChannels();
 
       for (const channel of data.channels) {
         for (const event of channel.scheduleItems) {
-          entries[channel.id] = event;
+          entries.push({
+            ...event,
+            channelId: channel.id,
+          });
         }
       }
 
@@ -160,7 +158,7 @@ class PeacockHandler {
     }
   };
 
-  public getChannels = async (numItems = 200): Promise<IPeacockRes> => {
+  public getChannels = async (): Promise<IPeacockRes> => {
     try {
       const now = moment();
 
@@ -172,6 +170,8 @@ class PeacockHandler {
         now.subtract(1, 'hour');
       }
 
+      now.subtract(1, 'hour');
+
       now.seconds(0);
       now.milliseconds(0);
 
@@ -181,14 +181,13 @@ class PeacockHandler {
         '/bff/channel_guide',
         '?startTime=',
         now.format('YYYY-MM-DDTHH:mmZ'),
-        '&assetsPerChannelCapLimit=',
-        numItems,
         '&contentSegments=D2C,Free',
       ].join('');
 
       const {data} = await axios.get<IPeacockRes>(url, {
         headers: {
           'X-SkyOTT-Device': 'COMPUTER',
+          'X-SkyOTT-Language': 'en',
           'X-SkyOTT-Platform': 'PC',
           'X-SkyOTT-Proposition': 'NBCUOTT',
           'X-SkyOTT-Territory': 'US',

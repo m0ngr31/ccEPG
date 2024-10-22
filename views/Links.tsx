@@ -24,7 +24,7 @@ export const Links: FC<ILinksProps> = ({baseUrl}) => {
         </thead>
         <tbody>
           <tr>
-            <td>Insert into Source section</td>
+            <td>Insert into XMLTV Guide Data section</td>
             <td>
               <a href={xmltvUrl} class="secondary" target="_blank">
                 {xmltvUrl}
@@ -32,7 +32,7 @@ export const Links: FC<ILinksProps> = ({baseUrl}) => {
             </td>
           </tr>
           <tr>
-            <td>Insert into XMLTV Guide Data section</td>
+            <td>Insert into Source section</td>
             <td>
               <a href={channelsUrl} class="secondary" target="_blank">
                 {channelsUrl}

@@ -1,5 +1,6 @@
 import {Context, Hono} from 'hono';
 import {serve} from '@hono/node-server';
+import {serveStatic} from '@hono/node-server/serve-static';
 import {BlankEnv, BlankInput} from 'hono/types';
 import {html} from 'hono/html';
 
@@ -10,6 +11,8 @@ import {scheduleEntries} from './services/build-schedule';
 import {cleanEntries} from './services/shared-helpers';
 import {SERVER_PORT} from './services/port';
 import { miscDbHandler } from './services/misc-db';
+import { db } from './services/database';
+import { IChannel, IMisc } from './services/shared-interfaces';
 
 import {peacockHandler} from './services/peacock-handler';
 import {abcHandler} from './services/abc-handler';
@@ -19,14 +22,12 @@ import { Header } from './views/Header';
 import {Main} from './views/Main';
 import { Links } from './views/Links';
 import { Prefix } from './views/Prefix';
+import {Providers} from './views/Providers';
+import {Provider} from './views/Provider';
+import {Style} from './views/Style';
+import {Script} from './views/Script';
 
 import {version} from './package.json';
-import { Providers } from './views/Providers';
-import { db } from './services/database';
-import { IChannel, IMisc } from './services/shared-interfaces';
-import { Provider } from './views/Provider';
-import { Style } from './views/Style';
-import { Toast } from './views/Toast';
 
 const notFound = (c: Context<BlankEnv, '', BlankInput>) => c.text('404 not found', 404, {});
 
@@ -45,6 +46,8 @@ const schedule = async () => {
 };
 
 const app = new Hono();
+
+app.use('/node_modules/*', serveStatic({root: './'}));
 
 app.get('/', async c => {
   // For Links
@@ -77,26 +80,9 @@ app.get('/', async c => {
             </Providers>
           </Main>
           <Style />
+          <Script />
         </Layout>
-      )}
-      <script>
-        function removeToasts() {
-          const toasts = document.querySelectorAll('.alert');
-          toasts.forEach(toast => {
-            setTimeout(() => {
-              toast.remove();
-            }, 5000);
-          });
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-          removeToasts();
-        });
-
-        document.body.addEventListener('htmx:afterSwap', function (event) {
-          removeToasts();
-        });
-      </script>`,
+      )}`,
   );
 });
 
@@ -113,10 +99,13 @@ app.put('/update-prefix', async c => {
   }
 
   return c.html(
-    <>
-      <Prefix currentPrefix={prefix} invalid={invalid} />
-      {invalid && <Toast message="Invalid URI" type="error" />}
-    </>,
+    <Prefix currentPrefix={prefix} invalid={invalid} />,
+    200,
+    {
+      ...(invalid && {
+        'HX-Trigger': `{"HXToast":{"type":"error","body":"Invalid URI"}}`,
+      }),
+    },
   );
 });
 
@@ -131,10 +120,13 @@ app.put('/provider/toggle/:provider', async c => {
   const providerChannels = await db.channels.find<IChannel>({from: {$regex: regex}});
 
   return c.html(
-    <>
-      <Provider channels={providerChannels} name={provider} enabled={enabled} />
-      <Toast message={`${provider} ${enabled ? 'enabled' : 'disabled'}`} type="success" />
-    </>,
+    <Provider channels={providerChannels} name={provider} enabled={enabled} />,
+    200,
+    {
+      ...(enabled && {
+        'HX-Trigger': `{"HXToast":{"type":"success","body":"Successfully enabled ${provider}"}}`,
+      }),
+    },
   );
 });
 
@@ -143,21 +135,25 @@ app.put('/channel/toggle/:id', async c => {
   const body = await c.req.parseBody();
   const enabled = body['channel-enabled'] === 'on';
 
-  await db.channels.update({id: channelId}, {$set: {enabled}});
+  const {name} = await db.channels.update<IChannel>({id: channelId}, {$set: {enabled}}, {returnUpdatedDocs: true});
 
   return c.html(
-    <>
-      <input
-        hx-target="this"
-        hx-swap="outerHTML"
-        type="checkbox"
-        checked={enabled ? true : false}
-        hx-put={`/channel/toggle/${channelId}`}
-        hx-trigger="change"
-        name="channel-enabled"
-      />
-      <Toast message={`Channel ${enabled ? 'enabled' : 'disabled'}`} type="success" />
-    </>,
+    <input
+      hx-target="this"
+      hx-swap="outerHTML"
+      type="checkbox"
+      checked={enabled ? true : false}
+      data-enabled={enabled ? 'true': 'false'}
+      hx-put={`/channel/toggle/${channelId}`}
+      hx-trigger="change"
+      name="channel-enabled"
+    />,
+    200,
+    {
+      ...(enabled && {
+        'HX-Trigger': `{"HXToast":{"type":"success","body":"Successfully enabled ${name}"}}`,
+      }),
+    },
   );
 });
 
