@@ -12,5 +12,9 @@ export const Style: FC = () => (
       align-items: stretch;
       padding-right: 1rem;
     }
+    .hide-loading {
+      display: none;
+      height: 0;
+    }
   `}</style>
 );

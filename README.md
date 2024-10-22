@@ -1,4 +1,4 @@
-Current version: **0.1.3**
+Current version: **0.1.5**
 
 # About
 This allows you to fetch EPG data for linear streaming services such as Peacock and ABC, and transforms them so you can use them with [chrome-capture-for-channels](https://github.com/fancybits/chrome-capture-for-channels).

@@ -1,5 +1,5 @@
-import { db } from "./database";
-import { IMisc } from "./shared-interfaces";
+import {db} from './database';
+import {IMisc} from './shared-interfaces';
 
 export const CC_PREFIX = 'http://localhost:5589';
 
@@ -24,9 +24,9 @@ class MiscDB {
     const networkObj = await db.misc.findOne<IMisc>({key: network});
 
     if (!networkObj) {
-      await db.misc.insert({key: network, value: true});
+      await db.misc.insert({key: network, value: false});
 
-      return true;
+      return false;
     }
 
     return networkObj.value as boolean;

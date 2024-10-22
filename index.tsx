@@ -29,6 +29,11 @@ import {Script} from './views/Script';
 
 import {version} from './package.json';
 
+const PROVIDER_MAP = {
+  ABC: abcHandler,
+  Peacock: peacockHandler,
+} as const;
+
 const notFound = (c: Context<BlankEnv, '', BlankInput>) => c.text('404 not found', 404, {});
 
 const shutDown = () => process.exit(0);
@@ -115,6 +120,10 @@ app.put('/provider/toggle/:provider', async c => {
   const enabled = body['provider-enabled'] === 'on';
 
   await miscDbHandler.setCanUseNetwork(provider.toLowerCase(), enabled);
+
+  if (enabled) {
+    await PROVIDER_MAP[provider].getSchedule();
+  }
 
   const regex = new RegExp(provider, 'i');
   const providerChannels = await db.channels.find<IChannel>({from: {$regex: regex}});

@@ -22,6 +22,7 @@ export const Provider: FC<IProviderProps> = ({name, channels, enabled}) => {
                 name="provider-enabled"
                 type="checkbox"
                 role="switch"
+                id={`${name}-toggle`}
                 checked={enabled ? true : false}
                 data-enabled={enabled ? 'true' : 'false'}
               />
@@ -29,6 +30,7 @@ export const Provider: FC<IProviderProps> = ({name, channels, enabled}) => {
             </label>
           </fieldset>
         </div>
+        <div aria-busy="true" id={`${name}-loading`} class="hide-loading" />
         {enabled && (
           <table class="striped">
             <thead>
@@ -65,6 +67,19 @@ export const Provider: FC<IProviderProps> = ({name, channels, enabled}) => {
           </table>
         )}
       </section>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            var toggle = document.getElementById('${name}-toggle');
+
+            if (toggle) {
+              toggle.addEventListener('htmx:beforeRequest', function() {
+                document.querySelector('#${name}-loading').classList.remove('hide-loading');
+              });
+            }
+          `,
+        }}
+      />
       <hr />
     </div>
   );
